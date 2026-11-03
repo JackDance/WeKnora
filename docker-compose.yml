@@ -62,7 +62,8 @@ services:
       # Optional: declarative built-in models. Copy config/builtin_models.yaml.example
       # to config/builtin_models.yaml, edit it for your deployment, then
       # uncomment the line below. See website-docs/03-features/06-models.md.
-      # - ./config/builtin_models.yaml:/app/config/builtin_models.yaml:ro
+      # jack/custom: 启用内置对话/向量/重排模型（见 config/builtin_models.yaml）
+      - ./config/builtin_models.yaml:/app/config/builtin_models.yaml:ro
       # Optional: model catalog overlay (extra vendors / model overrides).
       # Copy config/models.json.example to config/models.json, then
       # - ./config/models.json:/app/config/models.json:ro
@@ -407,10 +408,9 @@ services:
       # 数据源未配置 parse_mode 时回退读取并打印弃用警告，后续版本将移除。
       - FEISHU_DOCX_PARSE_MODE=${FEISHU_DOCX_PARSE_MODE:-}
     depends_on:
-      redis:
-        condition: service_started
-      postgres:
-        condition: service_healthy
+      # jack/custom: 业务库和 Redis 使用 .env 里的远程地址时，不要等待本地容器。
+      # 需要本地 postgres/redis 时：docker compose --profile local-infra up -d
+      # 并恢复下面 postgres/redis 的 depends_on。
       docreader:
         condition: service_healthy
     networks:
@@ -611,12 +611,17 @@ services:
     restart: unless-stopped
     # 添加停机时的优雅退出时间
     stop_grace_period: 1m
+    # jack/custom: 默认不启本地库；需要时加 --profile local-infra
+    profiles:
+      - local-infra
 
   redis:
     image: redis:7.0-alpine
     container_name: WeKnora-redis
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
     restart: always
+    profiles:
+      - local-infra
     networks:
       - WeKnora-network
 
