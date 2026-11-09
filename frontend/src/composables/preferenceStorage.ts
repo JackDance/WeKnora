@@ -1,18 +1,21 @@
 /**
  * Shared localStorage utilities for per-user UI preferences (theme, fonts).
  *
- * Storage layout: WeKnora_${userId}_${suffix}, where userId is the active
+ * Storage layout: RuiBase_${userId}_${suffix}, where userId is the active
  * user's id or "anon" before login. Read paths are intentionally narrow —
  * no cross-namespace fallbacks — so one user's preferences cannot bleed
  * into another user's session.
  *
  * One-shot migration adopts pre-existing values into the current user's
  * namespace at login time:
- *   - Legacy un-namespaced keys (WeKnora_${suffix}) from earlier branch
- *     versions are inherited and removed.
+ *   - Legacy keys (RuiBase/PharmMind/WeKnora namespaces) from earlier
+ *     branch versions are inherited and removed.
  *   - The "anon" namespace (used while no user is logged in) is also
  *     adopted and cleared, so the next user to log in cannot inherit it.
  */
+
+const PREF_NS = 'RuiBase'
+const LEGACY_PREF_NS_LIST = ['PharmMind', 'WeKnora']
 
 const PREFERENCE_SUFFIXES = [
   'theme',
@@ -46,7 +49,7 @@ export function safeSetItem(key: string, value: string): void {
   } catch (err) {
     // Quota exceeded, disabled storage, private mode — surface in DevTools
     // so the issue is at least diagnosable, but don't break the UI.
-    console.warn(`[WeKnora] failed to persist preference "${key}":`, err)
+    console.warn(`[RuiBase] failed to persist preference "${key}":`, err)
   }
 }
 
@@ -59,7 +62,7 @@ export function safeRemoveItem(key: string): void {
 }
 
 export function userKey(suffix: string): string {
-  return `WeKnora_${readUserId()}_${suffix}`
+  return `${PREF_NS}_${readUserId()}_${suffix}`
 }
 
 export function loadPreference(suffix: string): string | null {
@@ -85,27 +88,30 @@ export function migratePreferencesIntoUser(): void {
   migratedForUser = userId
 
   for (const suffix of PREFERENCE_SUFFIXES) {
-    const target = `WeKnora_${userId}_${suffix}`
+    const target = `${PREF_NS}_${userId}_${suffix}`
     const targetExists = safeGetItem(target) !== null
 
-    const anonKey = `WeKnora_anon_${suffix}`
-    const legacyKey = `WeKnora_${suffix}`
+    const anonKey = `${PREF_NS}_anon_${suffix}`
+    const shortKey = `${PREF_NS}_${suffix}`
+    const candidates = [anonKey, shortKey]
+    for (const ns of LEGACY_PREF_NS_LIST) {
+      candidates.push(`${ns}_anon_${suffix}`, `${ns}_${suffix}`, `${ns}_${userId}_${suffix}`)
+    }
 
     if (!targetExists) {
-      const anonValue = safeGetItem(anonKey)
-      if (anonValue !== null) {
-        safeSetItem(target, anonValue)
-      } else {
-        const legacyValue = safeGetItem(legacyKey)
-        if (legacyValue !== null) {
-          safeSetItem(target, legacyValue)
+      for (const key of candidates) {
+        const value = safeGetItem(key)
+        if (value !== null) {
+          safeSetItem(target, value)
+          break
         }
       }
     }
 
     // Always clean up source keys so subsequent users cannot inherit them.
-    safeRemoveItem(anonKey)
-    safeRemoveItem(legacyKey)
+    for (const key of candidates) {
+      if (key !== target) safeRemoveItem(key)
+    }
   }
 }
 

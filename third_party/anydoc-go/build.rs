@@ -11,6 +11,18 @@ fn main() {
     let include_dir = manifest_dir.join("include");
     let header = include_dir.join("anydoc.h");
 
+    println!("cargo:rerun-if-changed=src/lib.rs");
+    println!("cargo:rerun-if-changed=src/model.rs");
+    println!("cargo:rerun-if-changed=src/asset_links.rs");
+    println!("cargo:rerun-if-env-changed=ANYDOC_REGEN_HEADER");
+
+    // cbindgen::Builder::with_crate runs `cargo metadata`, which deadlocks with
+    // the outer `cargo build` on ~/.cargo/.package-cache. The committed header
+    // is the source of truth; only regenerate when explicitly requested.
+    if std::env::var_os("ANYDOC_REGEN_HEADER").is_none() && header.is_file() {
+        return;
+    }
+
     std::fs::create_dir_all(&include_dir).expect("create include directory");
 
     let config = cbindgen::Config {
@@ -31,8 +43,4 @@ fn main() {
             println!("cargo:warning=cbindgen failed to generate anydoc.h: {err}");
         }
     }
-
-	println!("cargo:rerun-if-changed=src/lib.rs");
-	println!("cargo:rerun-if-changed=src/model.rs");
-	println!("cargo:rerun-if-changed=src/asset_links.rs");
 }

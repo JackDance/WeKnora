@@ -45,20 +45,20 @@ const emojiChar = computed(() => {
   return v.slice(6).trim() || '';
 });
 
-// 预定义渐变色（与项目绿色主色协调，偏空间/协作感）
+// 预定义渐变色（与青石蓝主色协调）
 const gradients = [
-  { from: '#07c05f', to: '#059669' },  // 主绿
-  { from: '#11998e', to: '#38ef7d' },  // 深绿渐变
-  { from: '#43e97b', to: '#38f9d7' },  // 绿青
-  { from: '#02aab0', to: '#00cdac' },  // 青绿
+  { from: '#1B6B9A', to: '#155A84' },  // 主青石蓝
+  { from: '#2B7FA8', to: '#1B6B9A' },
+  { from: '#0F4A6E', to: '#1B6B9A' },
+  { from: '#4A9BC4', to: '#2B7FA8' },
   { from: '#36d1dc', to: '#5b86e5' }, // 青蓝
-  { from: '#4facfe', to: '#00f2fe' },  // 蓝青
-  { from: '#667eea', to: '#764ba2' },  // 紫蓝
-  { from: '#4776e6', to: '#8e54e9' },  // 蓝紫
-  { from: '#56ab2f', to: '#a8e063' },  // 草绿
-  { from: '#00b09b', to: '#96c93d' },  // 青绿
-  { from: '#5ee7df', to: '#b490ca' },  // 青紫
-  { from: '#614385', to: '#516395' },  // 深紫蓝
+  { from: '#4facfe', to: '#1B6B9A' },
+  { from: '#667eea', to: '#1B6B9A' },
+  { from: '#4776e6', to: '#2B7FA8' },
+  { from: '#3A7CA5', to: '#0F4A6E' },
+  { from: '#5B8FB9', to: '#1B6B9A' },
+  { from: '#7BB8D6', to: '#2B7FA8' },
+  { from: '#614385', to: '#516395' },
 ];
 
 const hashCode = (str: string): number => {

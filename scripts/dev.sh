@@ -366,23 +366,44 @@ check_remote_dev_connectivity() {
         return 0
     fi
 
+    local db_host="${DB_HOST:-$host}"
     local db_port="${DB_PORT:-5432}"
-    local redis_port
-    redis_port="${REDIS_ADDR#*:}"
-    if [ "$redis_port" = "$REDIS_ADDR" ]; then
-        redis_port=6379
-    fi
-    local docreader_port="${DOCREADER_PORT:-50051}"
 
-    log_info "检查远程基础设施连通性 (${host})..."
+    local redis_host="$host"
+    local redis_port=6379
+    if [ -n "${REDIS_ADDR:-}" ]; then
+        if [[ "$REDIS_ADDR" == *:* ]]; then
+            redis_host="${REDIS_ADDR%:*}"
+            redis_port="${REDIS_ADDR##*:}"
+        else
+            redis_host="$REDIS_ADDR"
+        fi
+    fi
+
+    # DocReader 可本机可远程：优先按 DOCREADER_ADDR 探测（如 127.0.0.1:50051）
+    local docreader_host="$host"
+    local docreader_port="${DOCREADER_PORT:-50051}"
+    if [ -n "${DOCREADER_ADDR:-}" ]; then
+        local doc_addr="${DOCREADER_ADDR#http://}"
+        doc_addr="${doc_addr#https://}"
+        doc_addr="${doc_addr#grpc://}"
+        if [[ "$doc_addr" == *:* ]]; then
+            docreader_host="${doc_addr%:*}"
+            docreader_port="${doc_addr##*:}"
+        else
+            docreader_host="$doc_addr"
+        fi
+    fi
+
+    log_info "检查开发基础设施连通性 (DB/Redis → ${host}, DocReader → ${docreader_host}:${docreader_port})..."
     local failed=0
-    for spec in "PostgreSQL:${host}:${db_port}" "Redis:${host}:${redis_port}" "DocReader:${host}:${docreader_port}"; do
+    for spec in "PostgreSQL:${db_host}:${db_port}" "Redis:${redis_host}:${redis_port}" "DocReader:${docreader_host}:${docreader_port}"; do
         local name="${spec%%:*}"
         local rest="${spec#*:}"
         local h="${rest%%:*}"
         local p="${rest##*:}"
         if command -v nc &> /dev/null; then
-            if nc -z -w 3 "$h" "$p" 2>/dev/null; then
+            if nc -z -G 3 "$h" "$p" 2>/dev/null || nc -z -w 3 "$h" "$p" 2>/dev/null; then
                 log_success "${name} ${h}:${p} 可达"
             else
                 log_error "${name} ${h}:${p} 不可达 (no route / connection refused)"
@@ -395,12 +416,13 @@ check_remote_dev_connectivity() {
 
     if [ "$failed" -ne 0 ]; then
         echo ""
-        log_error "无法连接远程开发环境 ${host}"
+        log_error "开发基础设施连通性检查失败"
         log_info "排查建议:"
-        echo "  1. 确认远程机器 Docker 容器在运行 (postgres/redis/docreader)"
-        echo "  2. 确认本机与 ${host} 在同一局域网 (本机: $(ipconfig getifaddr en0 2>/dev/null || echo '未知'))"
-        echo "  3. 在远程检查端口映射: docker ps --format 'table {{.Names}}\t{{.Ports}}'"
-        echo "  4. 检查远程防火墙是否放行 5432/6379/50051"
+        echo "  1. 确认远程 Postgres/Redis 可达: ${db_host}:${db_port} / ${redis_host}:${redis_port}"
+        echo "  2. DocReader 本机启动: docker compose -f docker-compose.dev.yml up -d docreader"
+        echo "     或: cd docreader && uv sync && uv run -m docreader.main"
+        echo "  3. 确认 .env.local 中 DOCREADER_ADDR 与实际监听一致（当前常用 127.0.0.1:50051）"
+        echo "  4. 远程防火墙放行 DB/Redis 端口；本机与 ${host} 网络可达"
         return 1
     fi
     return 0
