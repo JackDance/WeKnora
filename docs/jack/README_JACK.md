@@ -27,6 +27,9 @@ git push -u origin jack/custom
 
 本机 Mac 连远程库用公网 IP；若 WeKnora 和 Postgres/Redis 部署在**同一台**服务器，容器内请把 `.env` 的 `DB_HOST` / `REDIS_ADDR` 改成 `host.docker.internal`（公网 IP 在容器里常会超时）。
 
+前端去品牌化（改什么）：见同目录 [`ui-rebrand.md`](ui-rebrand.md)。  
+前端源码构建 Docker 镜像并在 Ubuntu 上运行：见同目录 [`frontend-docker-build-and-run.md`](frontend-docker-build-and-run.md)。
+
 ## 相对原仓库改了什么
 
 没有改业务源码。改的是启动编排和配置。
